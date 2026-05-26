@@ -276,14 +276,14 @@ If you cannot install Node.js, Python, or Docker locally (e.g. locked-down corpo
 #### Step 1: Upload zip to S3
 
 1. Go to **S3** in AWS Console → **Create bucket** (any name, e.g. `deploy-temp`)
-2. Upload the `wither-bills.zip` file to that bucket
+2. Upload the `sample-billing-transfer-workflow-automation.zip` file to that bucket
 
 #### Step 2: Launch deploy instance
 
 1. Go to **CloudFormation → Create stack → Upload a template file**
 2. Select `docs/deploy-instance.yaml` from the zip
 3. Stack name: `deploy-instance`
-4. Parameter `S3ZipPath`: enter `s3://YOUR-BUCKET/wither-bills.zip`
+4. Parameter `S3ZipPath`: enter `s3://YOUR-BUCKET/sample-billing-transfer-workflow-automation.zip`
 5. Acknowledge IAM resource creation → Submit
 6. Wait ~3 minutes for CREATE_COMPLETE
 

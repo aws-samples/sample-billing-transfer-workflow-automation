@@ -190,7 +190,7 @@ After deployment, the application uses least-privilege IAM roles created by CDK:
 
 ```bash
 git clone <repository-url>
-cd billing-transfer-automation-portal
+cd sample-billing-transfer-workflow-automation
 pnpm install
 uv sync
 ```

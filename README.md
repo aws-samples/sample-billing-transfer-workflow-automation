@@ -294,7 +294,7 @@ If you cannot install Node.js, Python, or Docker locally (e.g. locked-down corpo
 
 ```bash
 sudo su - ec2-user
-cd ~/wither-bills
+cd ~/sample-billing-transfer-worflow-automation
 
 # Remove empty AWS_PROFILE (EC2 uses instance role automatically)
 node -e "const f='.env';let c=require('fs').readFileSync(f,'utf8');c=c.replace(/^AWS_PROFILE=.*\n?/gm,'');require('fs').writeFileSync(f,c)"

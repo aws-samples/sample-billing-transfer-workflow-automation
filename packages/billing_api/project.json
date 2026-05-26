@@ -1,0 +1,142 @@
+{
+  "name": "billing_partner_portal.billing_api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "packages/billing_api/billing_partner_portal_billing_api",
+  "release": {
+    "version": {
+      "versionActions": "@nxlv/python/release/version-actions"
+    }
+  },
+  "tags": [],
+  "metadata": {
+    "generator": "py#fast-api",
+    "ports": [8000],
+    "apiName": "billing-api",
+    "apiType": "fast-api",
+    "auth": "Cognito"
+  },
+  "targets": {
+    "add": {
+      "executor": "@nxlv/python:add",
+      "options": {}
+    },
+    "build": {
+      "dependsOn": ["lint", "compile", "test", "bundle", "openapi"],
+      "options": {
+        "outputPath": "{workspaceRoot}/dist/{projectRoot}"
+      }
+    },
+    "bundle": {
+      "dependsOn": ["bundle-x86"]
+    },
+    "bundle-x86": {
+      "cache": true,
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}/bundle-x86"],
+      "options": {
+        "commands": [
+          "uv export --frozen --no-dev --no-editable --project {projectRoot} --package billing_partner_portal.billing_api -o dist/{projectRoot}/bundle-x86/requirements.txt",
+          "uv pip install -n --no-deps --no-installer-metadata --no-compile-bytecode --python-platform x86_64-manylinux_2_28 --python-version 3.12 --target dist/{projectRoot}/bundle-x86 -r dist/{projectRoot}/bundle-x86/requirements.txt",
+          "node -e \"const fs=require('fs'),p=require('path'),d='dist/packages/billing_api/bundle-x86';['pyarrow','pandas','sympy','numpy','numpy.libs','pillow.libs','PIL','grpc','google','mpmath'].forEach(x=>{const t=p.join(d,x);try{fs.rmSync(t,{recursive:true,force:true})}catch{}})\"",
+          "ncp {projectRoot}/run.sh dist/{projectRoot}/bundle-x86/run.sh"
+        ],
+        "parallel": false
+      },
+      "dependsOn": ["compile"]
+    },
+    "compile": {
+      "executor": "@nxlv/python:build",
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}/build"],
+      "options": {
+        "outputPath": "{workspaceRoot}/dist/{projectRoot}/build",
+        "publish": false,
+        "lockedVersions": true,
+        "bundleLocalDependencies": true
+      },
+      "cache": true
+    },
+    "format": {
+      "executor": "@nxlv/python:ruff-format",
+      "outputs": [],
+      "options": {
+        "filePatterns": ["billing_partner_portal_billing_api", "tests"]
+      },
+      "cache": true
+    },
+    "install": {
+      "executor": "@nxlv/python:install",
+      "options": {
+        "silent": false,
+        "args": "",
+        "verbose": false,
+        "debug": false
+      }
+    },
+    "lint": {
+      "executor": "@nxlv/python:ruff-check",
+      "outputs": [],
+      "options": {
+        "lintFilePatterns": ["billing_partner_portal_billing_api", "tests"]
+      },
+      "cache": true,
+      "dependsOn": ["format"],
+      "configurations": {
+        "fix": {
+          "fix": true
+        },
+        "skip-lint": {
+          "exitZero": true
+        }
+      }
+    },
+    "lock": {
+      "executor": "@nxlv/python:lock",
+      "options": {
+        "update": false
+      }
+    },
+    "openapi": {
+      "cache": true,
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}/openapi"],
+      "options": {
+        "commands": [
+          "uv run python {projectRoot}/scripts/generate_open_api.py \"dist/{projectRoot}/openapi/openapi.json\""
+        ]
+      }
+    },
+    "remove": {
+      "executor": "@nxlv/python:remove",
+      "options": {}
+    },
+    "serve": {
+      "executor": "@nxlv/python:run-commands",
+      "options": {
+        "command": "uv run fastapi dev billing_partner_portal_billing_api/main.py --port 8000",
+        "cwd": "{projectRoot}"
+      },
+      "continuous": true
+    },
+    "sync": {
+      "executor": "@nxlv/python:sync",
+      "options": {}
+    },
+    "test": {
+      "executor": "@nxlv/python:run-commands",
+      "outputs": [
+        "{workspaceRoot}/reports/{projectRoot}/unittests",
+        "{workspaceRoot}/coverage/{projectRoot}"
+      ],
+      "options": {
+        "command": "uv run pytest tests/",
+        "cwd": "{projectRoot}"
+      },
+      "cache": true
+    },
+    "update": {
+      "executor": "@nxlv/python:update",
+      "options": {}
+    }
+  }
+}

@@ -1,0 +1,213 @@
+import json
+import os
+import uuid
+from collections.abc import AsyncIterator, Callable
+from typing import Any
+from urllib.parse import urlparse
+
+from aws_lambda_powertools import Logger, Metrics, Tracer
+from aws_lambda_powertools.metrics import MetricUnit
+from fastapi import FastAPI, Request, Response
+from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.routing import APIRoute
+from pydantic import BaseModel
+from starlette.middleware.exceptions import ExceptionMiddleware
+
+os.environ["POWERTOOLS_METRICS_NAMESPACE"] = "BillingApi"
+os.environ["POWERTOOLS_SERVICE_NAME"] = "BillingApi"
+
+logger: Logger = Logger()
+metrics: Metrics = Metrics()
+tracer: Tracer = Tracer()
+
+
+class InternalServerErrorDetails(BaseModel):
+    detail: str
+
+
+class JsonStreamingResponse(StreamingResponse):
+    """A streaming response that serializes items to JSON Lines format."""
+
+    media_type = "application/jsonl"
+
+    def __init__(
+        self,
+        content: AsyncIterator[BaseModel],
+        status_code: int = 200,
+        headers: dict[str, str] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Stream json lines from an async iterator yielding Pydantic models"""
+        super().__init__(
+            content=self._serialize(content),
+            status_code=status_code,
+            headers=headers,
+            media_type=self.media_type,
+            **kwargs,
+        )
+
+    @staticmethod
+    async def _serialize(
+        content: AsyncIterator[BaseModel],
+    ) -> AsyncIterator[bytes]:
+        """Serialize Pydantic models to JSON Lines format."""
+        async for item in content:
+            yield (item.model_dump_json() + "\n").encode("utf-8")
+
+    @staticmethod
+    def openapi_response(
+        item_model: type[BaseModel],
+        description: str = "Streaming response",
+    ) -> dict[str, Any]:
+        """Generate an OpenAPI application/jsonl response for a stream of the given model"""
+        return {
+            "description": description,
+            "content": {
+                "application/jsonl": {
+                    "itemSchema": {"$ref": f"#/components/schemas/{item_model.__name__}"},
+                }
+            },
+            # Include the model so FastAPI registers the schema in components/schemas
+            "model": item_model,
+        }
+
+
+app = FastAPI(title="BillingApi", responses={500: {"model": InternalServerErrorDetails}})
+
+
+# Add cors middleware
+@app.middleware("http")
+async def cors_middleware(request: Request, call_next):
+    origin = request.headers.get("origin")
+    allowed_origins = os.environ.get("ALLOWED_ORIGINS", "").split(",") if os.environ.get("ALLOWED_ORIGINS") else []
+
+    is_localhost = origin and urlparse(origin).hostname in ["localhost", "127.0.0.1"]
+    is_allowed_origin = origin and origin in allowed_origins
+
+    cors_origin = "*"
+    if allowed_origins and not is_localhost:
+        cors_origin = origin if is_allowed_origin else allowed_origins[0]
+
+    if request.method == "OPTIONS":
+        response = Response(status_code=204)
+    else:
+        response = await call_next(request)
+
+    response.headers["Access-Control-Allow-Origin"] = cors_origin
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+
+    return response
+
+
+# Add exception middleware(s)
+app.add_middleware(ExceptionMiddleware, handlers=app.exception_handlers)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, err):
+    logger.exception("Unhandled exception")
+
+    metrics.add_metric(name="Failure", unit=MetricUnit.Count, value=1)
+
+    origin = request.headers.get("origin", "")
+    allowed_origins = os.environ.get("ALLOWED_ORIGINS", "").split(",") if os.environ.get("ALLOWED_ORIGINS") else []
+    is_localhost = origin and urlparse(origin).hostname in ["localhost", "127.0.0.1"]
+    is_allowed_origin = origin and origin in allowed_origins
+    cors_origin = "*"
+    if allowed_origins and not is_localhost:
+        cors_origin = origin if is_allowed_origin else allowed_origins[0]
+
+    return JSONResponse(
+        status_code=500,
+        content=InternalServerErrorDetails(detail="Internal Server Error").model_dump(),
+        headers={
+            "Access-Control-Allow-Origin": cors_origin,
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        },
+    )
+
+
+@app.middleware("http")
+async def metrics_handler(request: Request, call_next):
+    metrics.add_dimension("route", f"{request.method} {request.url.path}")
+    metrics.add_metric(name="RequestCount", unit=MetricUnit.Count, value=1)
+
+    response = await call_next(request)
+
+    if response.status_code == 200:
+        metrics.add_metric(name="Success", unit=MetricUnit.Count, value=1)
+
+    return response
+
+
+# Add correlation id middleware
+@app.middleware("http")
+async def add_correlation_id(request: Request, call_next):
+    # Get correlation id from X-Correlation-Id header
+    corr_id = request.headers.get("x-correlation-id")
+    if not corr_id:
+        # Try to get request id from Lambda context (forwarded by Lambda Web Adapter)
+        lambda_context_header = request.headers.get("x-amzn-lambda-context")
+        if lambda_context_header:
+            try:
+                lambda_context = json.loads(lambda_context_header)
+                corr_id = lambda_context.get("request_id")
+            except (json.JSONDecodeError, KeyError):
+                pass
+    if not corr_id:
+        # If still empty, use uuid
+        corr_id = uuid.uuid4().hex
+
+    # Add correlation id to logs
+    logger.set_correlation_id(corr_id)
+
+    response = await call_next(request)
+
+    # Return correlation header in response
+    response.headers["X-Correlation-Id"] = corr_id
+    return response
+
+
+class LoggerRouteHandler(APIRoute):
+    def get_route_handler(self) -> Callable:
+        original_route_handler = super().get_route_handler()
+
+        async def route_handler(request: Request) -> Response:
+            # Add fastapi context to logs
+            ctx = {
+                "path": request.url.path,
+                "route": self.path,
+                "method": request.method,
+            }
+            logger.append_keys(fastapi=ctx)
+            logger.info("Received request")
+
+            return await original_route_handler(request)
+
+        return route_handler
+
+
+app.router.route_class = LoggerRouteHandler
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    for route in app.routes:
+        if isinstance(route, APIRoute):
+            route.operation_id = route.name
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        openapi_version=app.openapi_version,
+        description=app.description,
+        routes=app.routes,
+    )
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi

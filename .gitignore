@@ -1,0 +1,59 @@
+# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+
+# compiled output
+dist
+tmp
+out-tsc
+# dependencies
+node_modules
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+# misc
+/.sass-cache
+/connect.lock
+/coverage
+/libpeerconnection.log
+npm-debug.log
+yarn-error.log
+testem.log
+/typings
+# System Files
+.DS_Store
+Thumbs.db
+.nx/cache
+.nx/workspace-data
+vite.config.*.timestamp*
+vitest.config.*.timestamp*
+runtime-config.json
+/reports
+
+# Environment
+.env
+.kiro/
+cdk.context.json
+
+# Internal docs (not for partners)
+SECURITY.md
+SECURITY.pdf
+SECURITY_SCAN_REPORT*
+IAM_ACCESS_ANALYZER_REPORT*
+docs/PROJECT_STATUS.md
+docs/DEMO_SCRIPT.md
+docs/BLOG_POST*
+docs/THREAT_MODEL.md
+docs/cross-account-role.yaml
+docs/deploy-instance.yaml
+docs/*.docx
+docs/~$*

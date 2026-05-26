@@ -1,0 +1,216 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CostExplorer",
+      "Effect": "Allow",
+      "Action": [
+        "ce:GetCostAndUsage",
+        "ce:GetCostAndUsageWithResources",
+        "ce:GetCostForecast",
+        "ce:GetUsageForecast",
+        "ce:GetDimensionValues",
+        "ce:GetTags",
+        "ce:GetCostCategories",
+        "ce:GetSavingsPlansUtilization",
+        "ce:GetSavingsPlansUtilizationDetails",
+        "ce:GetSavingsPlansCoverage",
+        "ce:GetReservationUtilization",
+        "ce:GetReservationCoverage",
+        "ce:GetAnomalies",
+        "ce:GetAnomalyMonitors",
+        "ce:GetAnomalySubscriptions",
+        "ce:GetRightsizingRecommendation"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "BillingConductor",
+      "Effect": "Allow",
+      "Action": [
+        "billingconductor:ListBillingGroups",
+        "billingconductor:ListAccountAssociations",
+        "billingconductor:ListBillingGroupCostReports",
+        "billingconductor:GetBillingGroupCostReport",
+        "billingconductor:ListCustomLineItems",
+        "billingconductor:ListCustomLineItemVersions",
+        "billingconductor:ListResourcesAssociatedToCustomLineItem",
+        "billingconductor:ListPricingRules",
+        "billingconductor:ListPricingPlans",
+        "billingconductor:ListPricingRulesAssociatedToPricingPlan",
+        "billingconductor:ListPricingPlansAssociatedWithPricingRule",
+        "billingconductor:CreateCustomLineItem",
+        "billingconductor:UpdateCustomLineItem",
+        "billingconductor:DeleteCustomLineItem"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ComputeOptimizer",
+      "Effect": "Allow",
+      "Action": [
+        "compute-optimizer:GetRecommendationSummaries",
+        "compute-optimizer:GetEC2InstanceRecommendations",
+        "compute-optimizer:GetAutoScalingGroupRecommendations",
+        "compute-optimizer:GetEBSVolumeRecommendations",
+        "compute-optimizer:GetLambdaFunctionRecommendations",
+        "compute-optimizer:GetEnrollmentStatus"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CostOptimizationHub",
+      "Effect": "Allow",
+      "Action": [
+        "cost-optimization-hub:ListRecommendations",
+        "cost-optimization-hub:ListRecommendationSummaries",
+        "cost-optimization-hub:GetRecommendation",
+        "cost-optimization-hub:ListEnrollmentStatuses",
+        "cost-optimization-hub:GetPreferences"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "S3StorageLens",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetStorageLensConfiguration",
+        "s3:GetStorageLensDashboard",
+        "s3:ListStorageLensConfigurations"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AthenaForStorageLens",
+      "Effect": "Allow",
+      "Action": [
+        "athena:StartQueryExecution",
+        "athena:GetQueryExecution",
+        "athena:GetQueryResults",
+        "athena:GetWorkGroup"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "GlueForAthena",
+      "Effect": "Allow",
+      "Action": [
+        "glue:GetDatabase",
+        "glue:GetTable",
+        "glue:GetPartitions",
+        "glue:GetPartition",
+        "glue:BatchGetPartition"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AthenaResultsBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:GetBucketLocation",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::billing-portal-athena-results-*",
+        "arn:aws:s3:::billing-portal-athena-results-*/*"
+      ]
+    },
+    {
+      "Sid": "Pricing",
+      "Effect": "Allow",
+      "Action": [
+        "pricing:GetProducts",
+        "pricing:DescribeServices",
+        "pricing:GetAttributeValues",
+        "pricing:GetPriceListFileUrl",
+        "pricing:ListPriceLists"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "BCMPricingCalculator",
+      "Effect": "Allow",
+      "Action": ["bcm-pricing-calculator:List*", "bcm-pricing-calculator:Get*"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Budgets",
+      "Effect": "Allow",
+      "Action": [
+        "budgets:DescribeBudgets",
+        "budgets:DescribeBudget",
+        "budgets:DescribeBudgetPerformanceHistory",
+        "budgets:ViewBudget"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "FreeTier",
+      "Effect": "Allow",
+      "Action": ["freetier:GetFreeTierUsage"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Organizations",
+      "Effect": "Allow",
+      "Action": [
+        "organizations:ListAccounts",
+        "organizations:DescribeOrganization",
+        "organizations:DescribeAccount"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Billing",
+      "Effect": "Allow",
+      "Action": ["billing:Get*", "billing:List*"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DataExports",
+      "Effect": "Allow",
+      "Action": [
+        "bcm-data-exports:ListExports",
+        "bcm-data-exports:GetExport",
+        "bcm-data-exports:CreateExport",
+        "bcm-data-exports:DeleteExport",
+        "bcm-data-exports:UpdateExport",
+        "bcm-data-exports:ListExecutions",
+        "bcm-data-exports:GetExecution",
+        "bcm-data-exports:ListTables",
+        "bcm-data-exports:GetTable"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CurS3Delivery",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetBucketPolicy", "s3:GetBucketLocation"],
+      "Resource": [
+        "arn:aws:s3:::billing-portal-cur-*",
+        "arn:aws:s3:::billing-portal-cur-*/*"
+      ]
+    },
+    {
+      "Sid": "BedrockForChat",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream",
+        "bedrock:Converse",
+        "bedrock:ConverseStream",
+        "bedrock:GetFoundationModel",
+        "bedrock:ListFoundationModels",
+        "bedrock:GetFoundationModelAvailability",
+        "bedrock:ApplyGuardrail",
+        "bedrock:GetGuardrail"
+      ],
+      "Resource": [
+        "arn:aws:bedrock:*:*:inference-profile/*",
+        "arn:aws:bedrock:*::foundation-model/*"
+      ]
+    }
+  ]
+}

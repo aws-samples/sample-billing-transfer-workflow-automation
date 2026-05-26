@@ -1,0 +1,135 @@
+{
+  "name": "billing_partner_portal.agents",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "packages/agents/billing_partner_portal_agents",
+  "release": {
+    "version": {
+      "versionActions": "@nxlv/python/release/version-actions"
+    }
+  },
+  "tags": [],
+  "metadata": {
+    "generator": "py#project",
+    "ports": [8081],
+    "components": [
+      {
+        "generator": "py#strands-agent",
+        "path": "billing_partner_portal_agents/agent",
+        "name": "agent",
+        "port": 8081,
+        "rc": "AgentsAgent"
+      }
+    ]
+  },
+  "targets": {
+    "add": {
+      "executor": "@nxlv/python:add",
+      "options": {}
+    },
+    "build": {
+      "dependsOn": ["lint", "compile", "test"],
+      "options": {
+        "outputPath": "{workspaceRoot}/dist/{projectRoot}"
+      }
+    },
+    "compile": {
+      "executor": "@nxlv/python:build",
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}/build"],
+      "options": {
+        "outputPath": "{workspaceRoot}/dist/{projectRoot}/build",
+        "publish": false,
+        "lockedVersions": true,
+        "bundleLocalDependencies": true
+      },
+      "cache": true
+    },
+    "format": {
+      "executor": "@nxlv/python:ruff-format",
+      "outputs": [],
+      "options": {
+        "filePatterns": ["billing_partner_portal_agents", "tests"]
+      },
+      "cache": true
+    },
+    "install": {
+      "executor": "@nxlv/python:install",
+      "options": {
+        "silent": false,
+        "args": "",
+        "verbose": false,
+        "debug": false
+      }
+    },
+    "lint": {
+      "executor": "@nxlv/python:ruff-check",
+      "outputs": [],
+      "options": {
+        "lintFilePatterns": ["billing_partner_portal_agents", "tests"]
+      },
+      "cache": true,
+      "dependsOn": ["format"],
+      "configurations": {
+        "fix": {
+          "fix": true
+        },
+        "skip-lint": {
+          "exitZero": true
+        }
+      }
+    },
+    "lock": {
+      "executor": "@nxlv/python:lock",
+      "options": {
+        "update": false
+      }
+    },
+    "remove": {
+      "executor": "@nxlv/python:remove",
+      "options": {}
+    },
+    "sync": {
+      "executor": "@nxlv/python:sync",
+      "options": {}
+    },
+    "test": {
+      "executor": "@nxlv/python:run-commands",
+      "outputs": [
+        "{workspaceRoot}/reports/{projectRoot}/unittests",
+        "{workspaceRoot}/coverage/{projectRoot}"
+      ],
+      "options": {
+        "command": "uv run pytest tests/",
+        "cwd": "{projectRoot}"
+      },
+      "cache": true
+    },
+    "update": {
+      "executor": "@nxlv/python:update",
+      "options": {}
+    },
+    "agent-serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "uv run fastapi dev billing_partner_portal_agents/agent/main.py --port 8081"
+        ],
+        "cwd": "{projectRoot}"
+      },
+      "continuous": true
+    },
+    "agent-serve-local": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "uv run fastapi dev billing_partner_portal_agents/agent/main.py --port 8081"
+        ],
+        "cwd": "{projectRoot}",
+        "env": {
+          "SERVE_LOCAL": "true"
+        }
+      },
+      "continuous": true
+    }
+  }
+}

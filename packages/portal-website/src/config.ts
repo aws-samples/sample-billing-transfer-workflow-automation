@@ -1,0 +1,4 @@
+export default {
+  applicationName: 'Billing Transfer Automation Portal',
+  logo: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZjk5MDAiIHN0cm9rZS13aWR0aD0iMiI+PHJlY3QgeD0iMiIgeT0iMyIgd2lkdGg9IjIwIiBoZWlnaHQ9IjE4IiByeD0iMiIvPjxwYXRoIGQ9Ik0yIDloMjBNMTAgM3YxOCIvPjwvc3ZnPg==',
+};

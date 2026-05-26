@@ -1,0 +1,25 @@
+# Defines the checks to skip entirely. Remove if your requirements differ.
+skip-check:
+  # Lambda function suppressions (CDK custom resources)
+  - CKV_AWS_115 # Concurrent execution limit
+  - CKV_AWS_116 # Dead Letter Queue
+  - CKV_AWS_117 # Lambda functions in VPC
+  - CKV_AWS_173 # Encrypt Lambda environment variables
+  - CKV_AWS_272 # Code signing
+  # IAM wildcards required for billing APIs (billingconductor, ce, cur, athena, glue, bedrock)
+  - CKV_AWS_108 # Data exfiltration — billing APIs require broad read access
+  - CKV_AWS_109 # Permissions management — needed for Glue crawler role
+  - CKV_AWS_110 # Privilege escalation — false positive on billing service roles
+  - CKV_AWS_111 # Write access without constraints — billing APIs need write to S3/Athena
+  # ALB serves HTTP only — HTTPS terminates at API Gateway/CloudFront
+  - CKV_AWS_2   # ALB HTTPS — API Gateway handles TLS termination
+  - CKV_AWS_103 # TLS v1.2 on ALB — API Gateway enforces TLS
+  - CKV_AWS_260 # Security group port 80 — ALB is backend for API Gateway
+  - CKV_AWS_131 # ALB drop HTTP headers — already configured via dropInvalidHeaderFields
+  # API Gateway
+  - CKV_AWS_120 # API Gateway caching — not needed for this use case
+  - CKV_AWS_59  # Open access to backend — Cognito authorizer handles auth
+output:
+  - cli
+  - json
+output-file-path: console,dist/packages/infra/checkov/checkov_report.json

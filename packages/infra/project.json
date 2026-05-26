@@ -1,0 +1,108 @@
+{
+  "name": "@billing-partner-portal/infra",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/infra/src",
+  "projectType": "application",
+  "tags": [],
+  "metadata": {
+    "generator": "ts#infra"
+  },
+  "targets": {
+    "bootstrap": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "cdk bootstrap"
+      }
+    },
+    "build": {
+      "dependsOn": ["lint", "compile", "test", "synth", "checkov"]
+    },
+    "cdk": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "cdk"
+      }
+    },
+    "checkov": {
+      "cache": true,
+      "executor": "nx:run-commands",
+      "inputs": ["{workspaceRoot}/dist/{projectRoot}/cdk.out"],
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}/checkov"],
+      "dependsOn": ["synth"],
+      "options": {
+        "command": "uvx checkov==3.2.508 --config-file {projectRoot}/checkov.yml --directory dist/{projectRoot}/cdk.out --framework cloudformation"
+      }
+    },
+    "compile": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}/tsc"],
+      "options": {
+        "command": "tsc --build tsconfig.lib.json",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build", "compile"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "cdk deploy '**' --require-approval=never"
+      }
+    },
+    "deploy-ci": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "cdk deploy --all --require-approval=never --app ../../dist/{projectRoot}/cdk.out"
+      }
+    },
+    "destroy": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^build", "compile"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "cdk destroy --all --require-approval=never"
+      }
+    },
+    "destroy-ci": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "cdk destroy --all --require-approval=never --app ../../dist/{projectRoot}/cdk.out"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "cache": true,
+      "inputs": ["eslint"],
+      "configurations": {
+        "fix": {
+          "fix": true
+        },
+        "skip-lint": {
+          "force": true
+        }
+      }
+    },
+    "synth": {
+      "cache": true,
+      "executor": "nx:run-commands",
+      "inputs": ["default"],
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}/cdk.out"],
+      "dependsOn": ["^build", "compile"],
+      "options": {
+        "cwd": "{projectRoot}",
+        "command": "cdk synth"
+      }
+    },
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "{workspaceRoot}/coverage/{projectRoot}"
+      }
+    }
+  }
+}

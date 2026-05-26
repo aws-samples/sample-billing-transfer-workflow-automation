@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/portal-website"
+    },
+    {
+      "path": "./packages/common/constructs"
+    },
+    {
+      "path": "./packages/infra"
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+{
+  "name": "@billing-partner-portal/portal-website",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/portal-website/src",
+  "projectType": "application",
+  "tags": [],
+  "metadata": {
+    "generator": "ts#react-website",
+    "uxProvider": "Cloudscape",
+    "components": [
+      {
+        "generator": "ts#react-website#runtime-config",
+        "path": "src/components/RuntimeConfig"
+      },
+      {
+        "generator": "ts#react-website#auth",
+        "path": "src/components/CognitoAuth"
+      }
+    ]
+  },
+  "targets": {
+    "build": {
+      "dependsOn": ["lint", "compile", "bundle", "test"],
+      "options": {
+        "outputPath": "dist/{projectRoot}/bundle"
+      }
+    },
+    "bundle": {
+      "executor": "@nx/vite:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/{projectRoot}/bundle"
+      },
+      "configurations": {
+        "development": {
+          "mode": "development"
+        },
+        "production": {
+          "mode": "production"
+        }
+      },
+      "dependsOn": ["generate:billing-api-client"]
+    },
+    "compile": {
+      "dependsOn": ["bundle", "generate:billing-api-client"],
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}/tsc"],
+      "options": {
+        "command": "tsc --build tsconfig.app.json",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "generate:billing-api-client": {
+      "cache": true,
+      "executor": "nx:run-commands",
+      "inputs": [
+        {
+          "dependentTasksOutputFiles": "**/*.json"
+        }
+      ],
+      "outputs": [
+        "{workspaceRoot}/packages/portal-website/src/generated/billing-api"
+      ],
+      "options": {
+        "commands": [
+          "nx g @aws/nx-plugin:open-api#ts-hooks --openApiSpecPath=\"dist/packages/billing_api/openapi/openapi.json\" --outputPath=\"packages/portal-website/src/generated/billing-api\" --no-interactive",
+          "node packages/portal-website/patch-generated-client.cjs"
+        ],
+        "parallel": false
+      },
+      "dependsOn": ["billing_partner_portal.billing_api:openapi"]
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "cache": true,
+      "inputs": ["eslint"],
+      "configurations": {
+        "fix": {
+          "fix": true
+        },
+        "skip-lint": {
+          "force": true
+        }
+      }
+    },
+    "load:runtime-config": {
+      "executor": "nx:run-commands",
+      "metadata": {
+        "description": "Load runtime config from your deployed stack for dev purposes. You must set your AWS CLI credentials whilst calling 'pnpm exec nx run @billing-partner-portal/portal-website:load:runtime-config'"
+      },
+      "options": {
+        "commands": [
+          "node -e \"const{execSync}=require('child_process');const b=execSync('aws cloudformation describe-stacks --query \\\"Stacks[?starts_with(StackName,\\'billing-partner-portal-\\')][].Outputs[]|[?contains(OutputKey,\\'PortalWebsiteWebsiteBucketName\\')].OutputValue\\\" --output text').toString().trim();execSync('aws s3 cp s3://'+b+'/runtime-config.json packages/portal-website/public/runtime-config.json',{stdio:'inherit'})\""
+        ]
+      }
+    },
+    "preview": {
+      "dependsOn": ["build"],
+      "executor": "@nx/vite:preview-server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "@billing-partner-portal/portal-website:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "@billing-partner-portal/portal-website:build:development"
+        },
+        "production": {
+          "buildTarget": "@billing-partner-portal/portal-website:build:production"
+        }
+      }
+    },
+    "serve": {
+      "executor": "@nx/vite:dev-server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "@billing-partner-portal/portal-website:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "@billing-partner-portal/portal-website:build:development",
+          "hmr": true
+        },
+        "production": {
+          "buildTarget": "@billing-partner-portal/portal-website:build:production",
+          "hmr": false
+        }
+      }
+    },
+    "serve-local": {
+      "executor": "@nx/vite:dev-server",
+      "options": {
+        "buildTarget": "@billing-partner-portal/portal-website:build:development",
+        "hmr": true,
+        "mode": "serve-local"
+      },
+      "continuous": true,
+      "dependsOn": [
+        {
+          "projects": ["billing_partner_portal.billing_api"],
+          "target": "serve"
+        },
+        "generate:billing-api-client",
+        "watch-generate:billing-api-client"
+      ]
+    },
+    "serve-static": {
+      "executor": "@nx/web:file-server",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "@billing-partner-portal/portal-website:build",
+        "spa": true
+      }
+    },
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "{workspaceRoot}/coverage/{projectRoot}"
+      }
+    },
+    "watch-generate:billing-api-client": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "nx watch --projects=billing_partner_portal.billing_api --includeDependentProjects -- nx run @billing-partner-portal/portal-website:\"generate:billing-api-client\""
+        ]
+      },
+      "continuous": true
+    }
+  }
+}

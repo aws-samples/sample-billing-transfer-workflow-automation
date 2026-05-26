@@ -1,0 +1,50 @@
+import uvicorn
+from bedrock_agentcore.runtime.models import PingStatus
+from pydantic import BaseModel, Field
+
+from .agent import get_agent
+from .init import JsonStreamingResponse, app
+
+MAX_PROMPT_LENGTH = 10_000
+
+
+class InvokeInput(BaseModel):
+    prompt: str = Field(..., min_length=1, max_length=MAX_PROMPT_LENGTH)
+    session_id: str = Field(..., min_length=1, max_length=128, pattern=r"^[a-zA-Z0-9_-]+$")
+
+
+class StreamChunk(BaseModel):
+    content: str
+
+
+async def handle_invoke(input: InvokeInput):
+    """Streaming handler for agent invocation"""
+    with get_agent(session_id=input.session_id) as agent:
+        stream = agent.stream_async(input.prompt)
+        async for event in stream:
+            print(event)
+            text = event.get("event", {}).get("contentBlockDelta", {}).get("delta", {}).get("text")
+            if text is not None:
+                yield StreamChunk(content=text)
+            elif event.get("event", {}).get("messageStop") is not None:
+                yield StreamChunk(content="\n")
+
+
+@app.post(
+    "/invocations",
+    response_class=JsonStreamingResponse,
+    responses={200: JsonStreamingResponse.openapi_response(StreamChunk, "Stream of agent response chunks")},
+)
+async def invoke(input: InvokeInput) -> JsonStreamingResponse:
+    """Entry point for agent invocation"""
+    return JsonStreamingResponse(handle_invoke(input))
+
+
+@app.get("/ping")
+def ping() -> str:
+    # TODO: if running an async task, return PingStatus.HEALTHY_BUSY
+    return PingStatus.HEALTHY
+
+
+if __name__ == "__main__":
+    uvicorn.run("billing_partner_portal_agents.agent.main:app", port=8080)

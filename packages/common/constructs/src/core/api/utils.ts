@@ -1,0 +1,345 @@
+import { Integration, MethodOptions } from 'aws-cdk-lib/aws-apigateway';
+import {
+  HttpRouteIntegration,
+  AddRoutesOptions,
+} from 'aws-cdk-lib/aws-apigatewayv2';
+
+/**
+ * Type representing applicable HTTP Methods in API Gateway
+ */
+export type HttpMethod =
+  | 'ANY'
+  | 'DELETE'
+  | 'GET'
+  | 'HEAD'
+  | 'OPTIONS'
+  | 'PATCH'
+  | 'POST'
+  | 'PUT';
+
+/**
+ * Defines the details of an API operation.
+ */
+export interface OperationDetails {
+  /**
+   * The URL path for the operation
+   */
+  path: string;
+
+  /**
+   * The HTTP method for the operation
+   */
+  method: HttpMethod;
+}
+
+/**
+ * Represents an API Gateway REST API integration that can be attached to API methods.
+ */
+export interface RestApiIntegration {
+  integration: Integration;
+  options?: MethodOptions;
+}
+
+/**
+ * Represents an API Gateway HTTP API that can be attached to API methods.
+ */
+export interface HttpApiIntegration {
+  integration: HttpRouteIntegration;
+  options?: Omit<AddRoutesOptions, 'path' | 'methods' | 'integration'>;
+}
+
+/**
+ * Common options shared by all IntegrationBuilder configurations
+ */
+interface IntegrationBuilderPropsBase<
+  TOperation extends string,
+  TDefaultIntegrationProps extends object,
+> {
+  /** Map of operation names to their API path and HTTP method details */
+  operations: Record<TOperation, OperationDetails>;
+
+  /** Default configuration options for integrations */
+  defaultIntegrationOptions: TDefaultIntegrationProps;
+}
+
+/**
+ * Options for constructing an IntegrationBuilder with a shared integration pattern.
+ * A single default integration is built once (for '$router') and reused for all operations.
+ */
+interface SharedIntegrationBuilderProps<
+  TOperation extends string,
+  TDefaultIntegrationProps extends object,
+  TDefaultIntegration,
+> extends IntegrationBuilderPropsBase<TOperation, TDefaultIntegrationProps> {
+  pattern: 'shared';
+  /** Function to create a default integration for the shared router */
+  buildDefaultIntegration: (
+    op: '$router',
+    props: TDefaultIntegrationProps,
+  ) => TDefaultIntegration;
+}
+
+/**
+ * Options for constructing an IntegrationBuilder with an isolated integration pattern.
+ * A separate default integration is built per operation.
+ */
+interface IsolatedIntegrationBuilderProps<
+  TOperation extends string,
+  TDefaultIntegrationProps extends object,
+  TDefaultIntegration,
+> extends IntegrationBuilderPropsBase<TOperation, TDefaultIntegrationProps> {
+  pattern: 'isolated';
+  /** Function to create a default integration for an operation */
+  buildDefaultIntegration: (
+    op: TOperation,
+    props: TDefaultIntegrationProps,
+  ) => TDefaultIntegration;
+}
+
+/**
+ * Options for constructing an IntegrationBuilder
+ */
+export type IntegrationBuilderProps<
+  TOperation extends string,
+  TBaseIntegration,
+  TDefaultIntegrationProps extends object,
+  TDefaultIntegration extends TBaseIntegration,
+> =
+  | SharedIntegrationBuilderProps<
+      TOperation,
+      TDefaultIntegrationProps,
+      TDefaultIntegration
+    >
+  | IsolatedIntegrationBuilderProps<
+      TOperation,
+      TDefaultIntegrationProps,
+      TDefaultIntegration
+    >;
+
+/**
+ * Extracts the IntegrationBuilderProps variant matching the given pattern.
+ */
+type IntegrationBuilderPropsForPattern<
+  TOperation extends string,
+  TBaseIntegration,
+  TDefaultIntegrationProps extends object,
+  TDefaultIntegration extends TBaseIntegration,
+  TPattern extends 'shared' | 'isolated',
+> = Extract<
+  IntegrationBuilderProps<
+    TOperation,
+    TBaseIntegration,
+    TDefaultIntegrationProps,
+    TDefaultIntegration
+  >,
+  { pattern: TPattern }
+>;
+
+/**
+ * Resolves the default integration keys based on the pattern.
+ * - 'shared': only '$router' is a default key
+ * - 'isolated': all TOperation keys are default keys
+ */
+type DefaultIntegrationKeys<
+  TPattern extends 'shared' | 'isolated',
+  TOperation extends string,
+> = TPattern extends 'shared' ? '$router' : TOperation;
+
+/**
+ * Shared integration record: $router is required, individual operations are optional.
+ */
+type SharedIntegrations<TOperation extends string, TBaseIntegration> = {
+  $router: TBaseIntegration;
+} & Partial<Record<TOperation, TBaseIntegration>>;
+
+/**
+ * Valid integration record types for an API.
+ * Either all operations are provided (isolated), or $router is provided
+ * with optional per-operation overrides (shared).
+ */
+export type ApiIntegrations<TOperation extends string, TBaseIntegration> =
+  | SharedIntegrations<TOperation, TBaseIntegration>
+  | (Record<TOperation, TBaseIntegration> & { $router?: never });
+
+/**
+ * A builder class for creating API integrations with flexible configuration options.
+ *
+ * This class implements the builder pattern to create a set of API integrations
+ * with support for default configurations and selective overrides.
+ *
+ * @template TOperation - String literal type representing operation names
+ * @template TBaseIntegration - Base type for all integrations
+ * @template TIntegrations - Record mapping integration keys to their integrations
+ * @template TDefaultIntegrationProps - Type for default integration properties
+ * @template TDefaultIntegration - Type for default integration implementation
+ * @template TPattern - The integration pattern ('shared' or 'isolated')
+ */
+export class IntegrationBuilder<
+  TOperation extends string,
+  TBaseIntegration,
+  TIntegrations extends Record<string, TBaseIntegration>,
+  TDefaultIntegrationProps extends object,
+  TDefaultIntegration extends TBaseIntegration,
+  TPattern extends 'shared' | 'isolated',
+> {
+  /** Options for the integration builder */
+  private options: IntegrationBuilderProps<
+    TOperation,
+    TBaseIntegration,
+    TDefaultIntegrationProps,
+    TDefaultIntegration
+  >;
+
+  /** Map of operation names to their custom integrations */
+  private integrations: Partial<TIntegrations> = {};
+
+  /**
+   * Create an Integration Builder for an HTTP API
+   */
+  public static http = <
+    TOperation extends string,
+    TDefaultIntegrationProps extends object,
+    TDefaultIntegration extends HttpApiIntegration,
+    TPattern extends 'shared' | 'isolated',
+  >(
+    options: IntegrationBuilderPropsForPattern<
+      TOperation,
+      HttpApiIntegration,
+      TDefaultIntegrationProps,
+      TDefaultIntegration,
+      TPattern
+    >,
+  ) => {
+    return new IntegrationBuilder<
+      TOperation,
+      HttpApiIntegration,
+      Record<DefaultIntegrationKeys<TPattern, TOperation>, TDefaultIntegration>,
+      TDefaultIntegrationProps,
+      TDefaultIntegration,
+      TPattern
+    >(options);
+  };
+
+  /**
+   * Create an Integration Builder for a REST API
+   */
+  public static rest = <
+    TOperation extends string,
+    TDefaultIntegrationProps extends object,
+    TDefaultIntegration extends RestApiIntegration,
+    TPattern extends 'shared' | 'isolated',
+  >(
+    options: IntegrationBuilderPropsForPattern<
+      TOperation,
+      RestApiIntegration,
+      TDefaultIntegrationProps,
+      TDefaultIntegration,
+      TPattern
+    >,
+  ) => {
+    return new IntegrationBuilder<
+      TOperation,
+      RestApiIntegration,
+      Record<DefaultIntegrationKeys<TPattern, TOperation>, TDefaultIntegration>,
+      TDefaultIntegrationProps,
+      TDefaultIntegration,
+      TPattern
+    >(options);
+  };
+
+  private constructor(
+    options: IntegrationBuilderProps<
+      TOperation,
+      TBaseIntegration,
+      TDefaultIntegrationProps,
+      TDefaultIntegration
+    >,
+  ) {
+    this.options = options;
+  }
+
+  /**
+   * Overrides default integrations with custom implementations for specific operations.
+   *
+   * @param overrides - Map of operation names to their custom integration implementations
+   * @returns The builder instance with updated type information reflecting the overrides
+   */
+  public withOverrides<
+    TOverrideIntegrations extends Partial<Record<TOperation, TBaseIntegration>>,
+  >(overrides: TOverrideIntegrations) {
+    this.integrations = { ...this.integrations, ...overrides };
+    // Re-type to include the overridden integration types.
+    // If all operations are overridden in a 'shared' pattern, drop '$router' from the type.
+    type MergedIntegrations = [TOperation] extends [keyof TOverrideIntegrations]
+      ? Omit<TIntegrations, keyof TOverrideIntegrations | '$router'> &
+          TOverrideIntegrations
+      : Omit<TIntegrations, keyof TOverrideIntegrations> &
+          TOverrideIntegrations;
+    return this as unknown as IntegrationBuilder<
+      TOperation,
+      TBaseIntegration,
+      MergedIntegrations,
+      TDefaultIntegrationProps,
+      TDefaultIntegration,
+      TPattern
+    >;
+  }
+
+  /**
+   * Updates the default integration options that will be used for operations
+   * without custom overrides.
+   *
+   * @param options - Partial default integration options to merge with existing defaults
+   * @returns The builder instance
+   */
+  public withDefaultOptions(options: Partial<TDefaultIntegrationProps>) {
+    this.options.defaultIntegrationOptions = {
+      ...this.options.defaultIntegrationOptions,
+      ...options,
+    };
+    return this;
+  }
+
+  /**
+   * Builds and returns the complete set of integrations.
+   *
+   * This method creates the final integration map by:
+   * 1. Including all custom overrides provided via withOverrides()
+   * 2. Creating default integrations for any operations without custom overrides
+   *
+   * For the 'shared' pattern, a single router integration is built and assigned to '$router'.
+   * For the 'isolated' pattern, each operation without an override gets its own integration.
+   *
+   * @returns A complete map of integration keys to their integrations
+   */
+  public build(): TIntegrations {
+    const options = this.options;
+    return {
+      ...Object.fromEntries(
+        options.pattern === 'shared'
+          ? [
+              [
+                '$router',
+                options.buildDefaultIntegration(
+                  '$router',
+                  options.defaultIntegrationOptions,
+                ),
+              ],
+            ]
+          : (Object.keys(options.operations) as TOperation[])
+              .filter(
+                (op) =>
+                  !this.integrations[op as keyof typeof this.integrations],
+              )
+              .map((op) => [
+                op,
+                options.buildDefaultIntegration(
+                  op,
+                  options.defaultIntegrationOptions,
+                ),
+              ]),
+      ),
+      ...this.integrations,
+    } as unknown as TIntegrations;
+  }
+}

@@ -1,0 +1,105 @@
+import os
+from collections.abc import AsyncIterator
+from typing import Any
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.routing import APIRoute
+from pydantic import BaseModel
+from starlette.middleware.exceptions import ExceptionMiddleware
+
+
+class InternalServerErrorDetails(BaseModel):
+    detail: str
+
+
+class JsonStreamingResponse(StreamingResponse):
+    """A streaming response that serializes items to JSON Lines format."""
+
+    media_type = "application/jsonl"
+
+    def __init__(
+        self,
+        content: AsyncIterator[BaseModel],
+        status_code: int = 200,
+        headers: dict[str, str] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Stream json lines from an async iterator yielding Pydantic models"""
+        super().__init__(
+            content=self._serialize(content),
+            status_code=status_code,
+            headers=headers,
+            media_type=self.media_type,
+            **kwargs,
+        )
+
+    @staticmethod
+    async def _serialize(
+        content: AsyncIterator[BaseModel],
+    ) -> AsyncIterator[bytes]:
+        """Serialize Pydantic models to JSON Lines format."""
+        async for item in content:
+            yield (item.model_dump_json() + "\n").encode("utf-8")
+
+    @staticmethod
+    def openapi_response(
+        item_model: type[BaseModel],
+        description: str = "Streaming response",
+    ) -> dict[str, Any]:
+        """Generate an OpenAPI application/jsonl response for a stream of the given model"""
+        return {
+            "description": description,
+            "content": {
+                "application/jsonl": {
+                    "itemSchema": {"$ref": f"#/components/schemas/{item_model.__name__}"},
+                }
+            },
+            # Include the model so FastAPI registers the schema in components/schemas
+            "model": item_model,
+        }
+
+
+app = FastAPI(title="AgentsAgent", responses={500: {"model": InternalServerErrorDetails}})
+
+# Add cors middleware — origins from env var; defaults to localhost for local dev
+_allowed_origins = [
+    o.strip()
+    for o in os.environ.get("ALLOWED_ORIGINS", "http://localhost:4200,http://localhost:3000").split(",")
+    if o.strip()
+]
+app.add_middleware(CORSMiddleware, allow_origins=_allowed_origins, allow_methods=["*"], allow_headers=["*"])
+
+# Add exception middleware(s)
+app.add_middleware(ExceptionMiddleware, handlers=app.exception_handlers)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request, err):
+    print(request)
+    print(err)
+    return JSONResponse(
+        status_code=500, content=InternalServerErrorDetails(detail="Internal Server Error").model_dump()
+    )
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    for route in app.routes:
+        if isinstance(route, APIRoute):
+            route.operation_id = route.name
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        openapi_version=app.openapi_version,
+        description=app.description,
+        routes=app.routes,
+    )
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi

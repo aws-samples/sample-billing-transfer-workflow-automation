@@ -1,0 +1,26 @@
+[project]
+name = "nx-workspace"
+version = "1.0.0"
+dependencies = [
+  "billing_partner_portal.agents",
+  "billing_partner_portal.billing_api"
+]
+
+[tool.uv.workspace]
+members = [ "packages/agents", "packages/billing_api" ]
+
+[tool.uv.sources."billing_partner_portal.agents"]
+workspace = true
+
+[tool.uv.sources."billing_partner_portal.billing_api"]
+workspace = true
+
+[dependency-groups]
+dev = [
+  "ruff>=0.8.2",
+  "autopep8>=2.3.1",
+  "pytest>=8.3.4",
+  "pytest-sugar>=1.0.0",
+  "pytest-cov>=6.0.0",
+  "pytest-html>=4.1.1"
+]

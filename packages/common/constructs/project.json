@@ -1,0 +1,68 @@
+{
+  "name": "@billing-partner-portal/common-constructs",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/common/constructs/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "dependsOn": [
+        "lint",
+        "compile",
+        "test",
+        "@billing-partner-portal/portal-website:build",
+        "billing_partner_portal.billing_api:build"
+      ]
+    },
+    "compile": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}/tsc"],
+      "options": {
+        "command": "tsc --build tsconfig.lib.json",
+        "cwd": "{projectRoot}"
+      },
+      "dependsOn": ["generate:billing-api-metadata"]
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "cache": true,
+      "inputs": ["eslint"],
+      "configurations": {
+        "fix": {
+          "fix": true
+        },
+        "skip-lint": {
+          "force": true
+        }
+      }
+    },
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "{workspaceRoot}/coverage/{projectRoot}"
+      }
+    },
+    "generate:billing-api-metadata": {
+      "cache": true,
+      "executor": "nx:run-commands",
+      "inputs": [
+        {
+          "dependentTasksOutputFiles": "**/*.json"
+        }
+      ],
+      "outputs": [
+        "{workspaceRoot}/packages/common/constructs/src/generated/billing-api"
+      ],
+      "options": {
+        "commands": [
+          "nx g @aws/nx-plugin:open-api#ts-metadata --openApiSpecPath=\"dist/packages/billing_api/openapi/openapi.json\" --outputPath=\"packages/common/constructs/src/generated/billing-api\" --no-interactive"
+        ]
+      },
+      "dependsOn": ["billing_partner_portal.billing_api:openapi"]
+    }
+  },
+  "metadata": {
+    "generator": "ts#project"
+  }
+}

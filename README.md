@@ -18,7 +18,7 @@ When an AWS Partner uses [Billing Transfer](https://docs.aws.amazon.com/awsaccou
 
 ## Architecture
 
-![Architecture Diagram](docs/billintransferautomationarchitecture.jpeg)
+![Architecture Diagram](docs/BilingtransferautomationArchitecture.jpg)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐

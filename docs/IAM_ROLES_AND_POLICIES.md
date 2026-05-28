@@ -57,6 +57,31 @@ All IAM roles are created by AWS CDK during deployment. No manual IAM configurat
 | CloudWatch Logs service | `kms:Encrypt,Decrypt,ReEncrypt*,GenerateDataKey*,DescribeKey` | Encrypt Glue crawler logs and API Gateway access logs |
 | Glue crawler role | `kms:Encrypt,Decrypt` | Encrypt job bookmarks and CloudWatch logs |
 
+## Cross-Account Role (Bill-Receiver Accounts)
+
+**Purpose:** Deployed via CloudFormation (`docs/cross-account-role.yaml`) in each bill-receiver account. Allows the portal's Fargate Task Role to assume into the target account and perform billing operations.
+
+**Trust Policy:**
+- Principal: `arn:aws:iam::<PortalAccountId>:role/BillingPortalTaskRole`
+- Condition: `sts:ExternalId` must match the configured external ID (confused deputy protection)
+
+| Policy | Actions | Resource Scope | Purpose |
+|--------|---------|---------------|---------|
+| **BillingConductorAccess** | `billingconductor:List*,Get*,CreateCustomLineItem,UpdateCustomLineItem,DeleteCustomLineItem,BatchAssociate*,BatchDisassociate*` | `*` | Manage billing groups, pricing, CLIs |
+| **CostManagementAccess** | `ce:Get*,List*,Describe*`, `billing:ListBillingViews,GetBillingView`, `budgets:Describe*,View*` | `*` | Cost Explorer, Billing Views, Budgets |
+| **CurExportAccess** | `bcm-data-exports:Create/Get/List/Update/DeleteExport`, `cur:PutReportDefinition,DeleteReportDefinition,DescribeReportDefinitions` | `*` | CUR 2.0 export provisioning |
+| **AthenaGlueAccess** | `athena:StartQueryExecution,GetQueryExecution,GetQueryResults`, `glue:GetDatabase,GetTable,GetTables,GetCrawler,StartCrawler,UpdateCrawler` | Scoped to `billing_portal_cur` database, workgroup `primary` | Customer report queries, catalog management |
+| **S3CurDataAccess** | `s3:GetObject,PutObject,ListBucket,GetBucketLocation` | CUR data bucket, Athena results bucket | Read CUR Parquet, write query results |
+
+**Deployment:**
+```bash
+aws cloudformation deploy \
+  --template-file docs/cross-account-role.yaml \
+  --stack-name billing-portal-cross-account \
+  --parameter-overrides PortalAccountId=<portal-account-id> \
+  --capabilities CAPABILITY_NAMED_IAM
+```
+
 ## Security Notes
 
 - **Billing APIs require `*` resources** — AWS Billing Conductor, Cost Explorer, and BCM Data Exports do not support resource-level IAM permissions.
